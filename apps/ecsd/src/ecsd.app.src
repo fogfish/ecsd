@@ -1,0 +1,20 @@
+{application, ecsd,
+   [
+      {description, "aws ecs management daemon"},
+      {vsn,         "0.0.0"},
+      {modules,     []},
+      {registered,  []},
+      {applications,[
+         kernel
+        ,stdlib
+        ,lager
+        ,feta
+        ,datum
+        ,pipe
+        ,jsx
+        ,esh
+      ]},
+      {mod, {ecsd_app, []}},
+      {env, []}
+   ]
+}.  
