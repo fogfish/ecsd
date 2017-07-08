@@ -22,7 +22,7 @@ start_link() ->
 init([]) ->   
    {ok,
       {
-         {simple_one_for_one, 10, 1800},
+         {simple_one_for_one, 1000000, 1},
          [
             ?CHILD(worker, ecsd_dns)
          ]

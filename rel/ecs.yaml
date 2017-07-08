@@ -129,6 +129,12 @@ Parameters:
     Description: ECS Cluster Name
     Default: default
 
+  HostedZoneId:
+    Type: String
+    Description: |
+      Required - Route53 Hosted Zone Identity to update service discovery
+    Default: '' 
+
 ##
 ##
 Conditions:
@@ -156,6 +162,11 @@ Conditions:
 ##
 ##
 Resources:
+
+  EcsEmptyCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: !Ref EcsCluster
 
   Vpc:
     Condition: CreateVpcResources
@@ -278,8 +289,8 @@ Resources:
               - 'sts:AssumeRole'
       Path: /
       ManagedPolicyArns:
-        - >-
-          arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+        - "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
 
   EcsInstanceProfile:
     Type: 'AWS::IAM::InstanceProfile'
@@ -291,6 +302,22 @@ Resources:
   EcsInstanceLc:
     Condition: CreateEC2LCWithKeyPair
     Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Metadata: 
+      Comment: |
+        Install a simple application,
+      AWS::CloudFormation::Init: 
+        config:
+          files: 
+            /usr/local/ecsd-x+x86_64.Linux.bundle:
+              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0.x86_64.Linux.bundle",
+              mode: 000755
+              owner: root
+              group: root
+          
+          packages:
+            yum:
+              awscli: []
+
     Properties:
       ImageId: !Ref EcsAmiId
       InstanceType: !Ref EcsInstanceType
@@ -311,9 +338,34 @@ Resources:
             - |2
                >> /etc/ecs/ecs.config
 
+            - \necho [{ecsd, [{hosted_zone_id, \"
+            - !Ref HostedZoneId
+            - \"]}].
+            - |2
+               >> /etc/ecsd/app.config
+
+            - \nsh /usr/local/ecsd-x+x86_64.Linux.bundle
+            - \n/etc/init.d/ecsd start
+
   EcsInstanceLcWithoutKeyPair:
     Condition: CreateEC2LCWithoutKeyPair
     Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Metadata: 
+      Comment: |
+        Install a simple application,
+      AWS::CloudFormation::Init: 
+        config:
+          files: 
+            /usr/local/ecsd-x+x86_64.Linux.bundle:
+              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0.x86_64.Linux.bundle",
+              mode: 000755
+              owner: root
+              group: root
+          
+          packages:
+            yum:
+              awscli: []
+
     Properties:
       ImageId: !Ref EcsAmiId
       InstanceType: !Ref EcsInstanceType
@@ -332,6 +384,15 @@ Resources:
             - !Ref EcsCluster
             - |2
                >> /etc/ecs/ecs.config
+
+            - \necho [{ecsd, [{hosted_zone_id, \"
+            - !Ref HostedZoneId
+            - \"]}].
+            - |2
+               >> /etc/ecsd/app.config
+
+            - \nsh /usr/local/ecsd-x+x86_64.Linux.bundle
+            - \n/etc/init.d/ecsd start
 
   EcsInstanceAsg:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
@@ -358,7 +419,3 @@ Resources:
               - !Ref 'AWS::StackName'
           PropagateAtLaunch: 'true'
 
-  EcsEmptyCluster:
-    Type: "AWS::ECS::Cluster"
-    Properties:
-      ClusterName: !Ref EcsCluster

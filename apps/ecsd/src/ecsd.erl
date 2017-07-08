@@ -4,5 +4,5 @@
 
 
 start() ->
-   applib:boot(?MODULE, code:where_is_file("sys.config")).
+   applib:boot(?MODULE, code:where_is_file("dev.config")).
 

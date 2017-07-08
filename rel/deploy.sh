@@ -50,6 +50,7 @@ chmod ugo+x /etc/init.d/${APP}
 
 fi
 
+
 set +u
 set +e
 
