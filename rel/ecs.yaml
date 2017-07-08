@@ -308,15 +308,15 @@ Resources:
       AWS::CloudFormation::Init: 
         config:
           files: 
-            /usr/local/ecsd-x+x86_64.Linux.bundle:
-              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0.x86_64.Linux.bundle",
-              mode: 000755
+            /usr/local/ecsd-latest+x86_64.Linux.bundle:
+              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0.x86_64.Linux.bundle"
+              mode: "000755"
               owner: root
               group: root
           
           packages:
             yum:
-              awscli: []
+              aws-cli: []
 
     Properties:
       ImageId: !Ref EcsAmiId
@@ -338,14 +338,34 @@ Resources:
             - |2
                >> /etc/ecs/ecs.config
 
-            - \necho [{ecsd, [{hosted_zone_id, \"
+            - |
+              mkdir -p /etc/ecsd
+ 
+            - echo [{ecsd, [{hosted_zone_id, \"
             - !Ref HostedZoneId
-            - \"]}].
+            - \"}]}].
             - |2
                >> /etc/ecsd/app.config
 
-            - \nsh /usr/local/ecsd-x+x86_64.Linux.bundle
-            - \n/etc/init.d/ecsd start
+            - |
+              yum install -y aws-cfn-bootstrap
+
+            - |
+              yum update -y aws-cfn-bootstrap
+
+            - /opt/aws/bin/cfn-init -v 
+            - " --stack="
+            - !Ref AWS::StackName 
+            - " --resource=EcsInstanceLc"
+            - " --region=" 
+            - !Ref  AWS::Region
+            - |2
+               
+
+            - |
+              sh /usr/local/ecsd-latest+x86_64.Linux.bundle
+            - |
+              /etc/init.d/ecsd start
 
   EcsInstanceLcWithoutKeyPair:
     Condition: CreateEC2LCWithoutKeyPair
@@ -356,15 +376,15 @@ Resources:
       AWS::CloudFormation::Init: 
         config:
           files: 
-            /usr/local/ecsd-x+x86_64.Linux.bundle:
-              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0.x86_64.Linux.bundle",
-              mode: 000755
+            /usr/local/ecsd-latest+x86_64.Linux.bundle:
+              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0.x86_64.Linux.bundle"
+              mode: "000755"
               owner: root
               group: root
           
           packages:
             yum:
-              awscli: []
+              aws-cli: []
 
     Properties:
       ImageId: !Ref EcsAmiId
@@ -385,14 +405,34 @@ Resources:
             - |2
                >> /etc/ecs/ecs.config
 
-            - \necho [{ecsd, [{hosted_zone_id, \"
+            - |
+              mkdir -p /etc/ecsd
+ 
+            - echo [{ecsd, [{hosted_zone_id, \"
             - !Ref HostedZoneId
-            - \"]}].
+            - \"}]}].
             - |2
                >> /etc/ecsd/app.config
 
-            - \nsh /usr/local/ecsd-x+x86_64.Linux.bundle
-            - \n/etc/init.d/ecsd start
+            - |
+              yum install -y aws-cfn-bootstrap
+
+            - |
+              yum update -y aws-cfn-bootstrap
+
+            - /opt/aws/bin/cfn-init -v
+            - " --stack="
+            - !Ref AWS::StackName 
+            - " --resource=EcsInstanceLcWithoutKeyPair"
+            - " --region=" 
+            - !Ref  AWS::Region
+            - |2
+               
+
+            - |
+              sh /usr/local/ecsd-latest+x86_64.Linux.bundle
+            - |
+              /etc/init.d/ecsd start
 
   EcsInstanceAsg:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
