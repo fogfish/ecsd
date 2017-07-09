@@ -22,6 +22,9 @@ init(_) ->
 free(_, #state{pid = Pid}) ->
    esh:close(Pid).
 
+handle({esh, _, {eof, _}}, _Pipe, State) ->
+   {stop, eof, State};
+
 handle({esh, _, Json}, _Pipe, State) ->
    pipe:send(ecsd_service, jsx:decode(Json, [return_maps])),
    {next_state, handle, State}.
