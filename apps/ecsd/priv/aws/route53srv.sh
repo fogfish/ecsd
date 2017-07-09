@@ -3,9 +3,10 @@ set -u
 set -e
 
 ACTN=$1
-FQDN=$2
-ZONE=$3
-HOST=$(curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/public-ipv4 || echo "127.0.0.1")
+PORT=$2
+FQDN=$3
+ZONE=$4
+HOST=$(curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/hostname || echo "localhost")
 
 ##
 ##
@@ -22,14 +23,14 @@ cat > ${REQUEST} << EOF
             "ResourceRecords":
             [
                {
-                  "Value": "${HOST}"
+                  "Value": "1 1 ${PORT} ${HOST}"
                }
             ],
             "Weight": 100,
-            "SetIdentifier": "${HOST}",
+            "SetIdentifier": "${HOST}:${PORT}",
             "Name": "${FQDN}",
-            "Type": "A",
-            "TTL": 10
+            "Type": "SRV",
+            "TTL": 0
          }
       }
    ]

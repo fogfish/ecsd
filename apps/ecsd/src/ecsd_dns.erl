@@ -48,7 +48,7 @@ env(Id) ->
    lens:get(Lens, Json).
 
 %%
-%% SERVICE_FQDN = name
+%% SERVICE_FQDN = fqdn
 fqdn([<<"SERVICE_FQDN=", FQDN/binary>> | _]) ->
    FQDN;
 fqdn([_ | Env]) ->
@@ -57,11 +57,11 @@ fqdn([]) ->
    undefined.
 
 %%
-%% SERVICE_PORT_<port> = name
+%% SERVICE_PORT_<port> = fqdn
 port([<<"SERVICE_PORT_", Spec/binary>> | Env]) ->
    case binary:split(Spec, <<$=>>) of
-      [Port, Name] ->
-         {Port, Name};
+      [Port, FQDN] ->
+         {Port, FQDN};
       _ ->
          port(Env)
    end;
@@ -73,11 +73,12 @@ port([]) ->
 %%
 %%
 route53a(Actn, FQDN) ->
-   lager:info("[~s] ~s @ route53", [Actn, FQDN]),
+   lager:info("[~s] A ~s @ route53", [Actn, FQDN]),
    {ok, _} = esh:run_link([sh, which(route53a), Actn, FQDN, opts:val(hosted_zone_id, ecsd)]).
 
-route53s(Actn, FQDN) ->
-   ok.
+route53s(Actn, {Port, FQDN}) ->
+   lager:info("[~s] SRV ~s @ route53", [Actn, FQDN]),
+   {ok, _} = esh:run_link([sh, which(route53srv), Actn, Port, FQDN, opts:val(hosted_zone_id, ecsd)]).
 
 %%
 %%
