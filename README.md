@@ -59,7 +59,7 @@ version: '2'
 services:
    echo:
       image: fogfish/echo
-      mem_limit: 1000000
+      mem_limit: 1m
       ports:
          - "80:8888"
       environment:
@@ -87,7 +87,7 @@ version: '2'
 services:
    echo:
       image: fogfish/echo
-      mem_limit: 1000000
+      mem_limit: 1m
       ports:
          - "80:8888"
       environment:
@@ -111,6 +111,41 @@ For example, service discovery in Erlang
 inet_res:lookup("echo.example.com", any, srv).
 ```
 
+
+### IAM Task Roles
+
+Please refer to [IAM Task Roles](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#create_task_iam_policy_and_role) guideline from Amazon. 
+
+Define a IAM Role for your container and output its arn 
+```
+  DynamoDBAccessPolicy:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: 
+        Fn::Join:
+          - "-"
+          -
+            - !Ref Env
+            - "ddb"
+            - "io"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+```
+
+Spawn your service
+```
+ecs-cli compose --task-role-arn live-ddb-io ...
+```
 
 ## Next Steps
 
