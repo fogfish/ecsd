@@ -18,9 +18,9 @@ set -u
 set -e
 
 ACTN=$1
-FQDN=$2
-ZONE=$3
-HOST=$(curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/public-ipv4 || echo "127.0.0.1")
+HOST=$2
+FQDN=$3
+ZONE=$4
 
 ##
 ##

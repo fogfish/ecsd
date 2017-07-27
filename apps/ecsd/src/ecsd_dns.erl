@@ -64,8 +64,11 @@ env(Id) ->
 
 %%
 %% SERVICE_FQDN = fqdn
+%% SERVICE_FQDN_LOCAL = fqdn
 fqdn([<<"SERVICE_FQDN=", FQDN/binary>> | _]) ->
-   FQDN;
+   {'public-ipv4', FQDN};
+fqdn([<<"SERVICE_FQDN_LOCAL=", FQDN/binary>> | _]) ->
+   {'local-ipv4', FQDN};
 fqdn([_ | Env]) ->
    fqdn(Env);
 fqdn([]) ->
@@ -87,13 +90,15 @@ port([]) ->
 
 %%
 %%
-route53a(Actn, FQDN) ->
-   lager:info("[~s] A ~s @ route53", [Actn, FQDN]),
-   {ok, _} = esh:run_link([sh, which(route53a), Actn, FQDN, opts:val(hosted_zone_id, ecsd)]).
+route53a(Actn, {Mode, FQDN}) ->
+   {ok, IP} = esh:run_link([sh, which(host), Mode]),
+   lager:info("[~s] A ~s @ ~s", [Actn, FQDN, IP]),
+   {ok,  _} = esh:run_link([sh, which(route53a), Actn, IP, FQDN, opts:val(hosted_zone_id, ecsd)]).
 
 route53s(Actn, {Port, FQDN}) ->
-   lager:info("[~s] SRV ~s @ route53", [Actn, FQDN]),
-   {ok, _} = esh:run_link([sh, which(route53srv), Actn, Port, FQDN, opts:val(hosted_zone_id, ecsd)]).
+   {ok, IP} = esh:run_link([sh, which(host), hostname]),
+   lager:info("[~s] SRV ~s @ ~s", [Actn, FQDN, IP]),
+   {ok, _} = esh:run_link([sh, which(route53srv), Actn, IP, Port, FQDN, opts:val(hosted_zone_id, ecsd)]).
 
 %%
 %%

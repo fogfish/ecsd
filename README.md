@@ -5,7 +5,7 @@ The solution implements a supervisor daemon for microservices deployable to Amaz
 
 ## Key Features
 
-**DNS load balancer** makes a modification to AWS Route53 service with public IP of your microservices. The feature is an alternative solution to AWS ELB if [the cost overhead](https://aws.amazon.com/elasticloadbalancing/classicloadbalancer/pricing/) is redundant. Especially, when you are building extra small service. 
+**DNS load balancer** makes a modification to AWS Route53 service with public/private IP of your microservices. The feature is an alternative solution to AWS ELB if [the cost overhead](https://aws.amazon.com/elasticloadbalancing/classicloadbalancer/pricing/) is redundant. Especially, when you are building extra small service. 
 
 **Service discovery with DNS** as defined by [RFC 2782](https://tools.ietf.org/html/rfc2782). The Domain Name System has Service record `SRV` to publish port and hostname of servers for specified services. This DNS feature helps microservices to discover a dynamic port allocation in container environments.
 
@@ -21,7 +21,7 @@ The daemon targets fault-tolerance and simplicity for feature development and pr
 
 The daemon supplies pre-built releases for Amazon Linux/x86_64. You can download them from GitHub release pages.
 
-Build the latest version of authorization server from the master branch. The build process requires [Erlang/OTP](http://www.erlang.org/downloads) version 19.0 or later. All development, including new features and bug fixes, take place on the master branch using forking and pull requests as described in contribution guidelines.
+Build the latest version of the daemon from the master branch. The build process requires [Erlang/OTP](http://www.erlang.org/downloads) version 19.0 or later. All development, including new features and bug fixes, take place on the `master` branch using forking and pull requests as described in contribution guidelines.
 
 
 ### Spawn ECS cluster with the supervisor daemon
@@ -51,7 +51,7 @@ The cluster is ready for usage via [ECS command line utilities](http://docs.aws.
 
 ### Enable DNS load balancing.
 
-Microservices uses `SERVICE_FQDN` environment variable to define its fully qualified domain name. The daemon listens for changes of its containers. It `UPSERT` or `DELETE` record set `A` when container starts or dies.     
+Microservices uses `SERVICE_FQDN` and `SERVICE_FQDN_LOCAL` environment variable to define its fully qualified domain name. The daemon listens for changes of its containers runtime. It `UPSERT` or `DELETE` record set `A` when container starts or dies.     
 
 Example of docker compose file
 ```
@@ -79,7 +79,7 @@ curl http://echo.example.com/
 
 ### Enable Service discovery with DNS.
 
-Microservices uses `SERVICE_PORT_port` environment variable to define its fully qualified domain name. The daemon listens for changes of its containers. It `UPSERT` or `DELETE` record set `SRV` when container starts or dies.
+Microservices uses `SERVICE_PORT_port` environment variable to define a port mapping of its fully qualified domain name. The daemon listens for changes of its containers. It `UPSERT` or `DELETE` record set `SRV` when container starts or dies.
 
 Example of docker compose file
 ```
@@ -114,7 +114,7 @@ inet_res:lookup("echo.example.com", any, srv).
 
 ### IAM Task Roles
 
-Please refer to [IAM Task Roles](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#create_task_iam_policy_and_role) guideline from Amazon. 
+Please refer to [IAM Task Roles](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html#create_task_iam_policy_and_role) guideline from Amazon. The feature allow to specify an access roles for each microservices running within the cluster.
 
 Define a IAM Role for your container and output its arn 
 ```

@@ -18,10 +18,10 @@ set -u
 set -e
 
 ACTN=$1
-PORT=$2
-FQDN=$3
-ZONE=$4
-HOST=$(curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/hostname || echo "localhost")
+HOST=$2
+PORT=$3
+FQDN=$4
+ZONE=$5
 
 ##
 ##
