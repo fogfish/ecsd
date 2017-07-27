@@ -305,7 +305,7 @@ Resources:
         config:
           files: 
             /usr/local/ecsd-latest+x86_64.Linux.bundle:
-              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0-5.x86_64.Linux.bundle"
+              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0-8.x86_64.Linux.bundle"
               mode: "000755"
               owner: root
               group: root
