@@ -288,6 +288,7 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
         - "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
+        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
 
   EcsInstanceProfile:
     Type: 'AWS::IAM::InstanceProfile'
@@ -336,6 +337,10 @@ Resources:
               #!/bin/bash
             - echo ECS_CLUSTER=
             - !Ref EcsCluster
+            - |2
+               >> /etc/ecs/ecs.config
+
+            - echo 'ECS_AVAILABLE_LOGGING_DRIVERS=["json-file","awslogs"]'
             - |2
                >> /etc/ecs/ecs.config
 
@@ -389,3 +394,9 @@ Resources:
             - - 'ECS (ecsd) - '
               - !Ref 'AWS::StackName'
           PropagateAtLaunch: 'true'
+
+  EcsCloudWatchLog:
+    Type: "AWS::Logs::LogGroup"
+    Properties: 
+      LogGroupName: !Ref 'AWS::StackName'
+      RetentionInDays: 30
