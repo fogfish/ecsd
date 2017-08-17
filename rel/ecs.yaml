@@ -1,7 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: |
-  AWS CloudFormation template to create resources required to run tasks on an 
-  ECS cluster.
+  ECS Cluster resources. 
 
 ##
 ##
@@ -71,7 +70,7 @@ Parameters:
       - d2.8xlarge
     ConstraintDescription: must be a valid EC2 instance type.
 
-  KeyName:
+  SshKeyId:
     Type: 'String'
     Description: |
       Optional - Name of an existing EC2 KeyPair to enable SSH access to the ECS
@@ -151,9 +150,9 @@ Conditions:
         - ''
         - !Ref VpcAvailabilityZones
       - ''
-  HasKeyName: !Not 
+  HasSshKeyId: !Not 
     - !Equals 
-      - !Ref KeyName
+      - !Ref SshKeyId
       - ''
 
 ##
@@ -320,9 +319,9 @@ Resources:
       InstanceType: !Ref EcsInstanceType
       AssociatePublicIpAddress: true
       IamInstanceProfile: !Ref EcsInstanceProfile
-      KeyName: !If
-        - HasKeyName
-        - !Ref KeyName
+      SshKeyId: !If
+        - HasSshKeyId
+        - !Ref SshKeyId
         - !Ref AWS::NoValue
 
       SecurityGroups: !If 
