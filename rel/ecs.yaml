@@ -331,7 +331,7 @@ Resources:
       InstanceType: !Ref EcsInstanceType
       AssociatePublicIpAddress: true
       IamInstanceProfile: !Ref EcsInstanceProfile
-      SshKeyId: !If
+      KeyName: !If
         - HasSshKeyId
         - !Ref SshKeyId
         - !Ref AWS::NoValue
