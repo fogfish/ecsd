@@ -40,6 +40,20 @@ free(_, #state{pid = Pid}) ->
 handle({esh, _, {eof, _}}, _Pipe, State) ->
    {stop, eof, State};
 
-handle({esh, _, Json}, _Pipe, State) ->
-   pipe:send(ecsd_service, jsx:decode(Json, [return_maps])),
+handle({esh, _, Pckt}, _Pipe, State) ->
+   lists:foreach(fun upstream/1, binary:split(Pckt, <<$\n>>, [trim, global])),
    {next_state, handle, State}.
+
+%%
+%%
+upstream(Json) ->
+   try
+      pipe:send(ecsd_service, jsx:decode(Json, [return_maps]))
+   catch Error:Reason ->
+      error_logger:error_report([
+         {error,  Error},
+         {reason, Reason},
+         {packet, Json},
+         {stack,   erlang:get_stacktrace()}
+      ])
+   end.
