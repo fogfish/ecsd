@@ -18,6 +18,12 @@ Mappings:
 ##
 Parameters:
 
+  Version:
+    Type: String
+    Default: '0.1.0'
+    Description: |
+      The daemon version
+
   EcsAmiId:
     Type: String
     Description: |
@@ -305,7 +311,13 @@ Resources:
         config:
           files: 
             /usr/local/ecsd-latest+x86_64.Linux.bundle:
-              source: "https://github.com/fogfish/ecsd/releases/download/0.0.0/ecsd-0.0.0-8.x86_64.Linux.bundle"
+              source: !Join 
+                - ''
+                - - 'https://github.com/fogfish/ecsd/releases/download/'
+                  - !Ref Version
+                  - '/ecsd-'
+                  - !Ref Version
+                  - '.x86_64.Linux.bundle'
               mode: "000755"
               owner: root
               group: root
@@ -390,8 +402,10 @@ Resources:
         - Key: Name
           Value: !Join 
             - ''
-            - - 'ECS (ecsd) - '
-              - !Ref 'AWS::StackName'
+            - - !Ref 'AWS::StackName'
+              - ' (ecsd '
+              - !Ref Version
+              - ')'
           PropagateAtLaunch: 'true'
 
   EcsCloudWatchLog:
