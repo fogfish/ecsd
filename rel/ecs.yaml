@@ -309,22 +309,33 @@ Resources:
         Install a simple application,
       AWS::CloudFormation::Init: 
         config:
+          ## executed in the order: packages, groups, users, sources, files, commands, services
+          packages:
+            yum:
+              aws-cli: []
+
           files: 
             /usr/local/ecsd-latest+x86_64.Linux.bundle:
-              source: !Join 
-                - ''
-                - - 'https://github.com/fogfish/ecsd/releases/download/'
-                  - !Ref Version
-                  - '/ecsd-'
-                  - !Ref Version
-                  - '.x86_64.Linux.bundle'
+              source: !Sub 'https://github.com/fogfish/ecsd/releases/download/${Version}/ecsd-${Version}.x86_64.Linux.bundle'
               mode: "000755"
               owner: root
               group: root
           
-          packages:
-            yum:
-              aws-cli: []
+          commands:
+            ## optimize kernel for container that uses mmap (e.g. elastic)
+            01sysctl:
+              command: "sysctl -w vm.max_map_count=262144"
+
+            ## install ecsd supervisor
+            02ecsd-install:
+              command: sh /usr/local/ecsd-latest+x86_64.Linux.bundle
+            03ecsd-config:
+              command: !Sub |
+                mkdir -p /etc/ecsd &&
+                echo "[{ecsd, [{hosted_zone_id, \"${HostedZoneId}\"}]}]." >> /etc/ecsd/app.config
+            04ecsd-spawn:
+              command: /etc/init.d/ecsd start
+
 
     Properties:
       ImageId: !Ref EcsAmiId
@@ -346,6 +357,8 @@ Resources:
           - ''
           - - |
               #!/bin/bash
+
+            ## configure aws ecs agent
             - echo ECS_CLUSTER=
             - !Ref EcsCluster
             - |2
@@ -355,16 +368,8 @@ Resources:
             - |2
                >> /etc/ecs/ecs.config
 
-            - |
-              mkdir -p /etc/ecsd
- 
-            - echo [{ecsd, [{hosted_zone_id, \"
-            - !Ref HostedZoneId
-            - \"}]}].
-            - |2
-               >> /etc/ecsd/app.config
-
-            - |
+            ## install cloud init
+           - |
               yum install -y aws-cfn-bootstrap
 
             - |
@@ -378,11 +383,6 @@ Resources:
             - !Ref  AWS::Region
             - |2
                
-
-            - |
-              sh /usr/local/ecsd-latest+x86_64.Linux.bundle
-            - |
-              /etc/init.d/ecsd start
 
   EcsInstanceAsg:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
