@@ -369,7 +369,7 @@ Resources:
                >> /etc/ecs/ecs.config
 
             ## install cloud init
-           - |
+            - |
               yum install -y aws-cfn-bootstrap
 
             - |
