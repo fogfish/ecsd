@@ -174,6 +174,9 @@ Resources:
     Condition: CreateVpcResources
     Type: 'AWS::EC2::VPC'
     Properties:
+      ## DNS options are required to enable EFS
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
       CidrBlock: !FindInMap 
         - VpcCidrs
         - vpc
@@ -313,14 +316,46 @@ Resources:
           packages:
             yum:
               aws-cli: []
+              nfs-utils: []
 
-          files: 
+          files:
+            /etc/cfn/cfn-hup.conf:
+              content: !Join 
+                - ''
+                - - "[main]\n"
+                  - !Sub "stack=${AWS::StackId}\n"
+                  - !Sub "region=${AWS::Region}\n"
+              mode: "000400"
+              owner: root
+              group: root
+
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Join
+                - ''
+                - - "[cfn-auto-reloader-hook]\n"
+                  - "triggers=post.update\n"
+                  - "path=Resources.EcsInstanceLc.Metadata.AWS::CloudFormation::Init\n"
+                  - "action=/opt/aws/bin/cfn-init -v "
+                  - !Sub "   --stack ${AWS::StackName} "
+                  - "        --resource EcsInstanceLc "
+                  - !Sub "   --region ${AWS::Region}\n"
+                  - "runas=root\n"
+
             /usr/local/ecsd-latest+x86_64.Linux.bundle:
               source: !Sub 'https://github.com/fogfish/ecsd/releases/download/${Version}/ecsd-${Version}.x86_64.Linux.bundle'
               mode: "000755"
               owner: root
               group: root
           
+          services:
+            sysvinit:
+              cfn-hup:
+                enable: true
+                ensureRunning: true
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+
           commands:
             ## optimize kernel for container that uses mmap (e.g. elastic)
             01sysctl:
@@ -370,10 +405,10 @@ Resources:
 
             ## install cloud init
             - |
-              yum install -y aws-cfn-bootstrap
+              yum update -y
 
             - |
-              yum update -y aws-cfn-bootstrap
+              yum install -y aws-cfn-bootstrap
 
             - /opt/aws/bin/cfn-init -v 
             - " --stack="
@@ -383,6 +418,30 @@ Resources:
             - !Ref  AWS::Region
             - |2
                
+
+            - |
+              PATH=$PATH:/usr/local/bin
+            - |
+              AZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+
+            - !Sub EFS=$AZ.${FileSystem}.efs.${AWS::Region}.amazonaws.com
+            - |2
+               
+
+            - |
+              mkdir /mnt/efs
+            - |
+              mount -t nfs4 $EFS:/ /mnt/efs
+            - |
+              echo -e "$EFS:/ \t\t /mnt/efs \x09 nfs \x09 defaults \x09 0 \x09 0" | tee -a /etc/fstab
+            - |
+              service docker stop
+            - |
+              service docker start
+            - !Sub /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource EcsInstanceAsg --region ${AWS::Region}
+            - |2
+              
+
 
   EcsInstanceAsg:
     Type: 'AWS::AutoScaling::AutoScalingGroup'
@@ -413,3 +472,46 @@ Resources:
     Properties: 
       LogGroupName: !Ref 'AWS::StackName'
       RetentionInDays: 30
+
+  FileSystemSg:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Elastic File System allowed ports
+      VpcId: !If 
+        - CreateVpcResources
+        - !Ref Vpc
+        - !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          CidrIp: !Ref SourceCidr
+
+  FileSystem:
+    Type: "AWS::EFS::FileSystem"
+    Properties:
+      FileSystemTags: 
+        - Key: "Name"
+          Value: !Ref EcsCluster
+
+  MountTarget1:
+    Type: "AWS::EFS::MountTarget"
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !If
+        - CreateVpcResources
+        - !Ref PubSubnetAz1
+        - !Select [ 0, !Ref SubnetIds ]
+      SecurityGroups:
+        - !Ref FileSystemSg
+
+  MountTarget2:
+    Type: "AWS::EFS::MountTarget"
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !If
+        - CreateVpcResources
+        - !Ref PubSubnetAz2
+        - !Select [ 1, !Ref SubnetIds ]
+      SecurityGroups:
+        - !Ref FileSystemSg
