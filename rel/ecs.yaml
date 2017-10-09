@@ -140,6 +140,13 @@ Parameters:
       Required - Route53 Hosted Zone Identity to update service discovery
     Default: '' 
 
+  LoadBalancer:
+    Type: String
+    Description: |
+      Optional - Set a valid Load Balancer schema (internal, internet-facing) if cluster request
+      Load Balancing solutions
+    Default: ''
+
 ##
 ##
 Conditions:
@@ -159,6 +166,10 @@ Conditions:
   HasSshKeyId: !Not 
     - !Equals 
       - !Ref SshKeyId
+      - ''
+  CreateLbResource: !Not
+    - !Equals
+      - !Ref LoadBalancer
       - ''
 
 ##
@@ -515,3 +526,64 @@ Resources:
         - !Select [ 1, !Ref SubnetIds ]
       SecurityGroups:
         - !Ref FileSystemSg
+
+  EcsLoadBalancer:
+    Condition: CreateLbResource
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name: !Sub ${EcsCluster}-lb
+      Type: application
+      Scheme: !Ref LoadBalancer
+      SecurityGroups:
+        - !Ref EcsLoadBalancerSg
+      Subnets: 
+        - !If
+          - CreateVpcResources
+          - !Ref PubSubnetAz1
+          - !Select [ 0, !Ref SubnetIds ]
+        - !If
+          - CreateVpcResources
+          - !Ref PubSubnetAz2
+          - !Select [ 1, !Ref SubnetIds ]
+
+  EcsLoadBalancerSg:
+    Condition: CreateLbResource
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: ECS Allowed Ports
+      VpcId: !If 
+        - CreateVpcResources
+        - !Ref Vpc
+        - !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  EcsLoadBalancerListener:
+    Condition: CreateLbResource
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref EcsLoadBalancerDefaultTarget
+      LoadBalancerArn: !Ref EcsLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+
+  EcsLoadBalancerDefaultTarget:
+    Condition: CreateLbResource
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 60
+      UnhealthyThresholdCount: 10
+      HealthCheckPath: /
+      Name: !Sub ${EcsCluster}-lb-default-target
+      Port: 80
+      Protocol: HTTP
+      VpcId: !If 
+        - CreateVpcResources
+        - !Ref Vpc
+        - !Ref VpcId
+
