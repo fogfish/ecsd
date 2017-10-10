@@ -147,6 +147,65 @@ Spawn your service
 ecs-cli compose --task-role-arn live-ddb-io ...
 ```
 
+
+### Enable service discovery with ALB
+
+The cluster template defines application load balancer and all other resources required to operate container. The ALB feature allow to use AWS provisioned SSL certificate and terminate SSL traffic.
+
+You need to provision the cluster with two arguments
+* `LoadBalancer` valid Load Balancer schema such as `internal` or `internet-facing`. The stack creates the ALB only if this parameter is defined.
+* `SSLCertificate` ARN identify of SSL Certificate, as it is visible at your AWS console.
+
+```
+aws cloudformation create-stack \
+   --stack-name ${ECS_CLUSTER} \
+   --capabilities CAPABILITY_NAMED_IAM \
+   --template-body file://./rel/ecs.yaml \
+   --parameters \
+      ...
+      ParameterKey=LoadBalancer,ParameterValue=internet-facing \
+      ParameterKey=SSLCertificate,ParameterValue=...
+```
+
+The stack create ALB, security group configurations, the listener and default target group. Use `EcsLoadBalancerListener` ARN to bind a microservice specific TargetGroups with this load balancer.
+
+A typical micorservice deployment will require a ListenerRules and TargetGroup. You can manage them via Cloud Formation template
+
+```
+  LbListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: LbTargetGroup
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - "/service/*"
+      ListenerArn: 
+        Fn::ImportValue: !Sub ${NetworkStack}-SubnetID
+      Priority: 1
+
+  LbTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 60
+      UnhealthyThresholdCount: 10
+      HealthCheckPath: /
+      Name: !Sub ${Env}-void-${Vsn}-lb
+      Port: 80
+      Protocol: HTTP
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStack}-SubnetID
+```
+
+Deploy the service with following command
+```
+ecs-cli compose ... service up --target-group-arn ... --container-name ... --container-port ... --role ...
+```
+
+
 ## Next Steps
 
 * Get in touch with [Elastic Container Service](https://aws.amazon.com/ecs/)

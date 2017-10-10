@@ -147,6 +147,13 @@ Parameters:
       Load Balancing solutions
     Default: ''
 
+  SSLCertificate:
+    Type: String
+    Description: |
+      Optional - Identify of SSL Certificate
+    Default: '' 
+
+
 ##
 ##
 Conditions:
@@ -286,10 +293,16 @@ Resources:
           ToPort: 22
           CidrIp: !Ref SourceCidr
 
-        - IpProtocol: tcp
-          FromPort: !Ref EcsPort
-          ToPort: !Ref EcsPort
-          CidrIp: !Ref SourceCidr
+        - !If
+          - CreateLbResource
+          - IpProtocol: tcp
+            FromPort: 0
+            ToPort: 65535
+            SourceSecurityGroupId: !Ref EcsLoadBalancerSg
+          - IpProtocol: tcp
+            FromPort: !Ref EcsPort
+            ToPort: !Ref EcsPort
+            CidrIp: !Ref SourceCidr
 
   EcsInstancePolicy:
     Type: 'AWS::IAM::Role'
@@ -571,6 +584,10 @@ Resources:
       LoadBalancerArn: !Ref EcsLoadBalancer
       Port: 443
       Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref SSLCertificate
+      SslPolicy: "ELBSecurityPolicy-TLS-1-2-2017-01"
+
 
   EcsLoadBalancerDefaultTarget:
     Condition: CreateLbResource
@@ -586,4 +603,64 @@ Resources:
         - CreateVpcResources
         - !Ref Vpc
         - !Ref VpcId
+
+  ##
+  ##
+  EcsLoadBalancerManagementIam:
+    Condition: CreateLbResource
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${EcsCluster}-lb-role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: !Sub ${EcsCluster}-lb-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "ec2:AuthorizeSecurityGroupIngress"
+                  - "ec2:Describe*"
+                  - "elasticloadbalancing:DeregisterInstancesFromLoadBalancer"
+                  - "elasticloadbalancing:DeregisterTargets"
+                  - "elasticloadbalancing:Describe*"
+                  - "elasticloadbalancing:RegisterInstancesWithLoadBalancer"
+                  - "elasticloadbalancing:RegisterTargets"
+                Resource: 
+                  - "*"
+
+Outputs:
+
+  VpcId:
+    Value: !If 
+      - CreateVpcResources
+      - !Ref Vpc
+      - !Ref VpcId
+    Export: 
+      Name: !Sub ${AWS::StackName}-VpcId
+
+  LbListener:
+    Value: !If
+      - CreateLbResource
+      - !Ref EcsLoadBalancerListener
+      - ''
+    Export: 
+      Name: !Sub ${AWS::StackName}-LbListener
+
+  LbManagementIam:
+    Value: !If
+      - CreateLbResource
+      - !Ref EcsLoadBalancerManagementIam
+      - ''
+
+
 
