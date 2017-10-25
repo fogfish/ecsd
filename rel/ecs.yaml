@@ -481,14 +481,13 @@ Resources:
       MinSize: '1'
       MaxSize: !Ref AsgMaxSize
       DesiredCapacity: !Ref AsgMaxSize
+      MetricsCollection:
+        - Granularity:  1Minute
+          Metrics:
+            - GroupInServiceInstances
       Tags:
         - Key: Name
-          Value: !Join 
-            - ''
-            - - !Ref 'AWS::StackName'
-              - ' (ecsd '
-              - !Ref Version
-              - ')'
+          Value: !Sub ${AWS::StackName} ecsd ${Version}
           PropagateAtLaunch: 'true'
 
   EcsCloudWatchLog:
@@ -606,7 +605,7 @@ Resources:
 
   ##
   ##
-  EcsLoadBalancerManagementIam:
+  EcsLoadBalancerManagementRole:
     Condition: CreateLbResource
     Type: AWS::IAM::Role
     Properties:
@@ -656,10 +655,10 @@ Outputs:
     Export: 
       Name: !Sub ${AWS::StackName}-LbListener
 
-  LbManagementIam:
+  LbManagementRole:
     Value: !If
       - CreateLbResource
-      - !Ref EcsLoadBalancerManagementIam
+      - !Ref EcsLoadBalancerManagementRole
       - ''
 
 
