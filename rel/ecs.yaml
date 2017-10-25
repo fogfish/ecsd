@@ -153,6 +153,11 @@ Parameters:
       Optional - Identify of SSL Certificate
     Default: '' 
 
+  IncidentChannel:
+    Type: String
+    Description: |
+      Optional - Channel for Incident communication
+    Default: ''
 
 ##
 ##
@@ -161,23 +166,34 @@ Conditions:
   CreateVpcResources: !Equals 
     - !Ref VpcId
     - ''
+
   CreateSecurityGroup: !Equals 
     - !Ref SecurityGroup
     - ''
+
   UseSpecifiedVpcAvailabilityZones: !Not 
     - !Equals 
       - !Join 
         - ''
         - !Ref VpcAvailabilityZones
       - ''
+
   HasSshKeyId: !Not 
     - !Equals 
       - !Ref SshKeyId
       - ''
+
   CreateLbResource: !Not
     - !Equals
       - !Ref LoadBalancer
       - ''
+
+  CreateIncidentChannel: !Not
+    - !Equals
+      - !Ref IncidentChannel
+      - ''
+
+
 
 ##
 ##
@@ -637,7 +653,46 @@ Resources:
                 Resource: 
                   - "*"
 
+  ##
+  ##
+  EcsIncidentChannel:
+    Condition: CreateIncidentChannel
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub ${EcsCluster}-incident-channel
+      TopicName: !Sub ${EcsCluster}-incident-channel
+      Subscription:
+      - Protocol: email
+        Endpoint: !Ref IncidentChannel
+
+
 Outputs:
+
+  ClusterAsg:
+    Value: !Ref EcsInstanceAsg
+    Export:
+      Name: !Sub ${AWS::StackName}-asg
+
+  ClusterFs:
+    Value: !Ref FileSystem
+    Export:
+      Name: !Sub ${AWS::StackName}-fs
+
+  ClusterLb:
+    Value: !If
+      - CreateLbResource
+      - !Ref EcsLoadBalancer
+      - ''
+    Export: 
+      Name: !Sub ${AWS::StackName}-lb    
+
+  ClusterIncidentChannel:
+    Value: !If
+      - CreateIncidentChannel
+      - !Ref EcsIncidentChannel
+      - ''
+    Export: 
+      Name: !Sub ${AWS::StackName}-incident-channel  
 
   VpcId:
     Value: !If 
