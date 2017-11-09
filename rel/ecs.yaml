@@ -49,11 +49,19 @@ Parameters:
       - m4.2xlarge
       - m4.4xlarge
       - m4.10xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      ## c4 to be depricated
       - c4.large
       - c4.xlarge
       - c4.2xlarge
       - c4.4xlarge
       - c4.8xlarge
+      ## 
       - c3.large
       - c3.xlarge
       - c3.2xlarge
@@ -159,6 +167,12 @@ Parameters:
       Optional - Channel for Incident communication
     Default: ''
 
+  LocalFileSystem:
+    Type: String
+    Description: |
+      Optional - Specify the size of required volume to create Local File System.
+    Default: ''
+
 ##
 ##
 Conditions:
@@ -193,6 +207,10 @@ Conditions:
       - !Ref IncidentChannel
       - ''
 
+  CreateLocalFileSystem: !Not
+    - !Equals
+      - !Ref IncidentChannel
+      - ''
 
 
 ##
@@ -417,6 +435,14 @@ Resources:
       InstanceType: !Ref EcsInstanceType
       AssociatePublicIpAddress: true
       IamInstanceProfile: !Ref EcsInstanceProfile
+      BlockDeviceMappings: !If
+        - CreateLocalFileSystem 
+        - - DeviceName: "/dev/xvdk"
+            Ebs:
+              VolumeType: gp2
+              VolumeSize: !Ref LocalFileSystem
+        - AWS::NoValue
+
       KeyName: !If
         - HasSshKeyId
         - !Ref SshKeyId
@@ -474,6 +500,14 @@ Resources:
               mount -t nfs4 $EFS:/ /mnt/efs
             - |
               echo -e "$EFS:/ \t\t /mnt/efs \x09 nfs \x09 defaults \x09 0 \x09 0" | tee -a /etc/fstab
+            - |
+              test -b /dev/xvdk && mkdir /mnt/lfs
+            - |
+              test -b /dev/xvdk && mkfs.ext4 /dev/xvdk
+            - |
+              test -b /dev/xvdk && mount -t ext4 /dev/xvdk /mnt/lfs
+            - |
+              test -b /dev/xvdk &&  echo -e "/dev/xvdk \x09 /mnt/lfs \x09 ext4 \x09 defaults \x09 0 \x09 0" | tee -a /etc/fstab
             - |
               service docker stop
             - |
