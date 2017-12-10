@@ -209,7 +209,7 @@ Conditions:
 
   CreateLocalFileSystem: !Not
     - !Equals
-      - !Ref IncidentChannel
+      - !Ref LocalFileSystem
       - ''
 
 
@@ -622,8 +622,12 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
 
-  EcsLoadBalancerListener:
+  EcsLoadBalancerHttps:
     Condition: CreateLbResource
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -637,6 +641,16 @@ Resources:
         - CertificateArn: !Ref SSLCertificate
       SslPolicy: "ELBSecurityPolicy-TLS-1-2-2017-01"
 
+  EcsLoadBalancerHttp:
+    Condition: CreateLbResource
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref EcsLoadBalancerDefaultTarget
+      LoadBalancerArn: !Ref EcsLoadBalancer
+      Port: 80
+      Protocol: HTTP
 
   EcsLoadBalancerDefaultTarget:
     Condition: CreateLbResource
@@ -716,18 +730,25 @@ Outputs:
     Value: !If
       - CreateLbResource
       - !Ref EcsLoadBalancer
-      - ''
+      - 'None'
     Export: 
-      Name: !Sub ${AWS::StackName}-lb    
+      Name: !Sub ${AWS::StackName}-lb
 
+  ##
+  ## Exports are used to a CloudWatch alarms with Incident Channel
+  ##   * AWS::CloudWatch::Alarm
   ClusterIncidentChannel:
     Value: !If
       - CreateIncidentChannel
       - !Ref EcsIncidentChannel
-      - ''
+      - 'None'
     Export: 
       Name: !Sub ${AWS::StackName}-incident-channel  
 
+  ##
+  ## Exports are used to bind a "backing" resources with cluster LB
+  ##  * AWS::ElasticLoadBalancingV2::TargetGroup
+  ##  * AWS::ElasticLoadBalancingV2::ListenerRule
   VpcId:
     Value: !If 
       - CreateVpcResources
@@ -736,19 +757,27 @@ Outputs:
     Export: 
       Name: !Sub ${AWS::StackName}-VpcId
 
-  LbListener:
+  LbHttps:
     Value: !If
       - CreateLbResource
-      - !Ref EcsLoadBalancerListener
-      - ''
+      - !Ref EcsLoadBalancerHttps
+      - 'None'
     Export: 
-      Name: !Sub ${AWS::StackName}-LbListener
+      Name: !Sub ${AWS::StackName}-lb-https
 
+  LbHttp:
+    Value: !If
+      - CreateLbResource
+      - !Ref EcsLoadBalancerHttp
+      - 'None'
+    Export: 
+      Name: !Sub ${AWS::StackName}-lb-http
+
+  ##
+  ## The role facilitates a deployment and attachement of container to load balancer 
+  ## using ecs-cli comand line 
   LbManagementRole:
     Value: !If
       - CreateLbResource
       - !Ref EcsLoadBalancerManagementRole
-      - ''
-
-
-
+      - 'None'
