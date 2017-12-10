@@ -659,7 +659,7 @@ Resources:
       HealthCheckIntervalSeconds: 60
       UnhealthyThresholdCount: 10
       HealthCheckPath: /
-      Name: !Sub ${EcsCluster}-lb-default-target
+      Name: !Sub ${EcsCluster}-lb-def
       Port: 80
       Protocol: HTTP
       VpcId: !If 
