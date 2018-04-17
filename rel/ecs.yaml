@@ -20,7 +20,7 @@ Parameters:
 
   Version:
     Type: String
-    Default: '0.1.0'
+    Default: '0.2.0'
     Description: |
       The daemon version
 
@@ -34,64 +34,6 @@ Parameters:
     Description: |
       Required - ECS EC2 instance type
     Default: t2.micro
-    AllowedValues:
-      - t2.nano
-      - t2.micro
-      - t2.small
-      - t2.medium
-      - t2.large
-
-      - m5.large
-      - m5.xlarge
-      - m5.2xlarge
-      - m5.4xlarge
-      - m5.12xlarge
-      - m5.24xlarge
-      ## m3 & m4 to be deprecated
-      - m3.medium
-      - m3.large
-      - m3.xlarge
-      - m3.2xlarge
-      - m4.large
-      - m4.xlarge
-      - m4.2xlarge
-      - m4.4xlarge
-      - m4.10xlarge
-
-      - c5.large
-      - c5.xlarge
-      - c5.2xlarge
-      - c5.4xlarge
-      - c5.9xlarge
-      - c5.18xlarge
-      ## c4 to be depricated
-      - c4.large
-      - c4.xlarge
-      - c4.2xlarge
-      - c4.4xlarge
-      - c4.8xlarge
-      ## 
-      - c3.large
-      - c3.xlarge
-      - c3.2xlarge
-      - c3.4xlarge
-      - c3.8xlarge
-      - r3.large
-      - r3.xlarge
-      - r3.2xlarge
-      - r3.4xlarge
-      - r3.8xlarge
-      - i2.xlarge
-      - i2.2xlarge
-      - i2.4xlarge
-      - i2.8xlarge
-      - g2.2xlarge
-      - g2.8xlarge
-      - d2.xlarge
-      - d2.2xlarge
-      - d2.4xlarge
-      - d2.8xlarge
-    ConstraintDescription: must be a valid EC2 instance type.
 
   SshKeyId:
     Type: 'String'
@@ -180,6 +122,12 @@ Parameters:
     Type: String
     Description: |
       Optional - Specify the size of required volume to create Local File System.
+    Default: ''
+
+  EcsSpawnTasks:
+    Type: String
+    Description: |
+      Optional - Specify the list of task to spawn in the cluster at boot time
     Default: ''
 
 ##
@@ -364,6 +312,7 @@ Resources:
         - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
         - "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
         - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
 
   EcsInstanceProfile:
     Type: 'AWS::IAM::InstanceProfile'
@@ -384,6 +333,7 @@ Resources:
             yum:
               aws-cli: []
               nfs-utils: []
+              jq: []
 
           files:
             /etc/cfn/cfn-hup.conf:
@@ -413,6 +363,18 @@ Resources:
               mode: "000755"
               owner: root
               group: root
+
+            /usr/local/boot/ecs-task:
+              content: !Join
+                - ''
+                - - "set -x\n"
+                  - "until curl -s http://localhost:51678/v1/metadata\n"
+                  - "do\n"
+                  - "   sleep 1\n"
+                  - "done\n"
+                  - "instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )\n"
+                  - !Sub "test -n \"${EcsSpawnTasks}\" && for T in $(echo ${EcsSpawnTasks} | sed \"s/,/ /g\") ; do aws ecs start-task --cluster ${EcsCluster} --task-definition $T --container-instances $instance_arn --started-by $instance_arn --region ${AWS::Region} ; done\n"
+
           
           services:
             sysvinit:
@@ -437,6 +399,7 @@ Resources:
                 echo "[{ecsd, [{hosted_zone_id, \"${HostedZoneId}\"}]}]." >> /etc/ecsd/app.config
             04ecsd-spawn:
               command: /etc/init.d/ecsd start
+    
 
 
     Properties:

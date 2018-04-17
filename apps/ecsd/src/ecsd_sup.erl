@@ -42,6 +42,7 @@ init([]) ->
             ?CHILD(supervisor, ecsd_dns_sup)
            ,?CHILD(worker,     ecsd_service)
            ,?CHILD(worker,     ecsd_pubsub_docker)
+           ,?CHILD(worker,     ecsd_boot)
          ]
       }
    }.
