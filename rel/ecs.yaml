@@ -59,7 +59,12 @@ Parameters:
 
   AsgMaxSize:
     Type: Number
-    Description: Maximum size and initial Desired Capacity of ECS Auto Scaling Group
+    Description: Maximum size of ECS Auto Scaling Group
+    Default: '1'
+
+  AsgDesiredSize:
+    Type: Number
+    Description: Initial Desired Capacity of ECS Auto Scaling Group
     Default: '1'
 
   SecurityGroup:
@@ -500,9 +505,9 @@ Resources:
               - !Ref PubSubnetAz2
         - !Ref SubnetIds
       LaunchConfigurationName: !Ref EcsInstanceLc
-      MinSize: '1'
+      MinSize: '0'
       MaxSize: !Ref AsgMaxSize
-      DesiredCapacity: !Ref AsgMaxSize
+      DesiredCapacity: !Ref AsgDesiredSize
       MetricsCollection:
         - Granularity:  1Minute
           Metrics:
