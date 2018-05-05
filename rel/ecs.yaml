@@ -373,7 +373,7 @@ Resources:
                   - "   sleep 1\n"
                   - "done\n"
                   - "instance_arn=$(curl -s http://localhost:51678/v1/metadata | jq -r '. | .ContainerInstanceArn' | awk -F/ '{print $NF}' )\n"
-                  - !Sub "test -n \"${EcsSpawnTasks}\" && for T in $(echo ${EcsSpawnTasks} | sed \"s/,/ /g\") ; do aws ecs start-task --cluster ${EcsCluster} --task-definition $T --container-instances $instance_arn --started-by $instance_arn --region ${AWS::Region} ; done\n"
+                  - !Sub "test -n \"${EcsSpawnTasks}\" && for T in $(echo ${EcsSpawnTasks} | sed \"s/,/ /g\") ; do aws ecs start-task --cluster ${EcsCluster} --task-definition $T --container-instances $instance_arn --started-by $instance_arn --region ${AWS::Region} ; done || echo \"ok\"\n"
 
           
           services:
